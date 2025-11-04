@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: n8n-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=n8n
+      - POSTGRES_PASSWORD=Cursos1    # <-- cámbialo
+      - POSTGRES_DB=n8n
+      - TZ=Europe/Madrid
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5678:5678"
+    environment:
+      # --- DB ---
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=n8n
+      - DB_POSTGRESDB_PASSWORD=Cursos1   # <-- que coincida con postgres
+      # --- App / URL pública ---
+      - N8N_HOST=IP                # <-- pon aquí tu IP real
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://IP:5678/
+      - N8N_PORT=5678
+      - TZ=Europe/Madrid
+      # --- Seguridad ---
+      - N8N_ENCRYPTION_KEY=CHANGEME_hex32    # openssl rand -hex 32
+      # --- Auth básica ---
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=clockworker
+      - N8N_BASIC_AUTH_PASSWORD=Cursos1
+      - N8N_SECURE_COOKIE=false # HTTP -> Entorno de laboratorio
+    volumes:
+      - n8n_data:/home/node/.n8n
+    # Si hay problemas de permisos en Linux:
+    # user: "1000:1000"
+
+volumes:
+  postgres_data:
+  n8n_data:
